@@ -103,7 +103,31 @@ tbody td{padding:10px 14px;font-size:13px;color:var(--text);}
 .welcome-icon{font-size:32px;}
 .welcome-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff;}
 .welcome-sub{font-size:13px;color:var(--text2);margin-top:3px;}
-@media(max-width:768px){:root{--sidebar-w:0px;}.sidebar{transform:translateX(-230px);transition:transform 0.25s;}.sidebar.open{transform:translateX(0);width:230px;}.main{margin-left:0;}.form-row{grid-template-columns:1fr;}.mobile-menu-btn{display:flex!important;}}
+@media(max-width:768px){
+  :root{--sidebar-w:0px;}
+  .sidebar{transform:translateX(-230px);transition:transform 0.25s;}
+  .sidebar.open{transform:translateX(0);width:230px;}
+  .main{margin-left:0;}
+  .form-row{grid-template-columns:1fr;}
+  .mobile-menu-btn{display:flex!important;}
+  .table-wrap{overflow-x:auto;}
+  .desktop-table{display:none!important;}
+  .mobile-cards{display:block!important;}
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .content{padding:1rem;}
+  .topbar{padding:0.75rem 1rem;}
+}
+@media(min-width:769px){
+  .mobile-cards{display:none!important;}
+  .desktop-table{display:block!important;}
+}
+.mobile-cards{display:none;}
+.mission-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:0.75rem;}
+.mission-card-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;}
+.mission-card-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.mission-card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;}
+.mission-card-value{font-size:12px;color:var(--text2);text-align:right;max-width:60%;}
+.mission-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .mobile-menu-btn{display:none;background:transparent;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px;}
 </style>
 </head>
@@ -188,10 +212,11 @@ tbody td{padding:10px 14px;font-size:13px;color:var(--text);}
           <div class="stat-card"><div class="stat-label">Equipamentos</div><div class="stat-value gold" id="stat-equipamentos">0</div></div>
         </div>
         <div class="section-header"><div class="section-title">Missões Recentes</div></div>
-        <div class="table-wrap"><table>
+        <div class="desktop-table table-wrap"><table>
           <thead><tr><th>Missão</th><th>Tipo</th><th>Responsável</th><th>Data</th><th>Status</th><th></th></tr></thead>
           <tbody id="dash-missoes-tbody"><tr class="empty-row"><td colspan="6">Nenhuma missão registrada</td></tr></tbody>
         </table></div>
+        <div class="mobile-cards" id="dash-missoes-cards"></div>
       </div>
 
       <!-- MISSÕES -->
@@ -206,10 +231,11 @@ tbody td{padding:10px 14px;font-size:13px;color:var(--text);}
             <option value="">Todos</option><option value="Ativa">Ativa</option><option value="Concluída">Concluída</option><option value="Pendente">Pendente</option>
           </select>
         </div>
-        <div class="table-wrap"><table>
+        <div class="desktop-table table-wrap"><table>
           <thead><tr><th>Missão</th><th>Tipo</th><th>Atribuída por</th><th>Cidade</th><th>Local</th><th>Responsável</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
           <tbody id="missoes-tbody"></tbody>
         </table></div>
+        <div class="mobile-cards" id="missoes-cards"></div>
       </div>
 
       <!-- VIATURAS -->
@@ -745,6 +771,7 @@ function renderMissoes(){
   let rows=DB.missoes.filter(m=>(!q||m.nome.toLowerCase().includes(q)||(m.local||'').toLowerCase().includes(q)||(m.cidade||'').toLowerCase().includes(q))&&(!sf||m.status===sf));
   const tb=document.getElementById('missoes-tbody');
   if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">Nenhuma missão encontrada</td></tr>';return;}
+  renderMissoesCards(rows);
   tb.innerHTML=rows.map(m=>`<tr>
     <td><strong>${m.nome}</strong>${m.arquivo?` <span title="Possui anexo" style="cursor:pointer;" onclick="verAnexo('${m.id}')">📎</span>`:''}</td>
     <td class="td-muted">${m.tipo}</td>
@@ -761,6 +788,30 @@ function renderMissoes(){
       <button class="btn-danger" onclick="solicitarExclusaoMissao('${m.id}')">EXCLUIR</button>
     </td>
   </tr>`).join('');
+}
+
+function renderMissoesCards(rows){
+  const mc = document.getElementById('missoes-cards');
+  if(!mc) return;
+  if(!rows || !rows.length){mc.innerHTML='<div style="text-align:center;color:var(--text3);padding:2rem;font-size:13px;">Nenhuma missão encontrada</div>';return;}
+  mc.innerHTML = rows.map(m=>`
+    <div class="mission-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div class="mission-card-title">${m.nome}${m.arquivo?' 📎':''}</div>
+        ${badgeMissao(m.status)}
+      </div>
+      <div class="mission-card-row"><span class="mission-card-label">Tipo</span><span class="mission-card-value">${m.tipo}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Cidade</span><span class="mission-card-value">${m.cidade||'—'}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Responsável</span><span class="mission-card-value">${m.responsavelNome||'—'}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Atribuída por</span><span class="mission-card-value" style="color:var(--gold);font-size:11px;">${m.atribuida||'—'}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Data</span><span class="mission-card-value">${m.semData||m.data==='sem-data'?'<span class="badge badge-inactive">Sem data</span>':(m.data?m.data.split('-').reverse().join('/'):'—')}</span></div>
+      <div class="mission-card-actions">
+        ${m.status!=='Concluída'?`<button class="btn-primary" style="font-size:11px;padding:6px 12px;flex:1;" onclick="abrirConfirmarMissao('${m.id}')">✅ CONFIRMAR</button>`:'<span class="badge badge-done" style="padding:6px 12px;">CONCLUÍDA</span>'}
+        <button onclick="gerarOS('${m.id}')" style="background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.5);color:#c9a227;border-radius:6px;padding:6px 12px;font-family:Rajdhani,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📄 PDF</button>
+        <button class="btn-edit" style="padding:6px 10px;" onclick="editMissao('${m.id}')">✏️</button>
+        <button class="btn-danger" style="padding:6px 10px;" onclick="solicitarExclusaoMissao('${m.id}')">🗑️</button>
+      </div>
+    </div>`).join('');
 }
 
 function editMissao(id){
@@ -1062,6 +1113,21 @@ function checkAlertas(){
     </div>`).join('');
 }
 
+function renderDashCards(rows){
+  const mc=document.getElementById('dash-missoes-cards');if(!mc)return;
+  if(!rows||!rows.length){mc.innerHTML='<div style="text-align:center;color:var(--text3);padding:1.5rem;font-size:13px;">Nenhuma missão registrada</div>';return;}
+  mc.innerHTML=rows.map(m=>`
+    <div class="mission-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div class="mission-card-title">${m.nome}</div>${badgeMissao(m.status)}
+      </div>
+      <div class="mission-card-row"><span class="mission-card-label">Tipo</span><span class="mission-card-value">${m.tipo}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Responsável</span><span class="mission-card-value">${m.responsavelNome||'—'}</span></div>
+      <div class="mission-card-row"><span class="mission-card-label">Data</span><span class="mission-card-value">${m.semData||m.data==='sem-data'?'Sem data':(m.data?m.data.split('-').reverse().join('/'):'—')}</span></div>
+      ${m.status!=='Concluída'?`<div style="margin-top:8px;"><button class="btn-primary" style="font-size:11px;padding:6px 16px;width:100%;" onclick="abrirConfirmarMissao('${m.id}')">✅ DAR PRONTO</button></div>`:''}
+    </div>`).join('');
+}
+
 function updateDashboard(){
   const hoje=new Date().toISOString().slice(0,10);
   document.getElementById('stat-missoes-ativas').textContent=DB.missoes.filter(m=>m.status==='Ativa').length;
@@ -1073,6 +1139,7 @@ function updateDashboard(){
   const recent=DB.missoes.slice(0,5);
   const tb=document.getElementById('dash-missoes-tbody');
   if(!recent.length){tb.innerHTML='<tr class="empty-row"><td colspan="6">Nenhuma missão registrada</td></tr>';return;}
+  renderDashCards(recent);
   tb.innerHTML=recent.map(m=>`<tr>
     <td><strong>${m.nome}</strong></td><td class="td-muted">${m.tipo}</td>
     <td class="td-muted">${m.responsavelNome||'—'}</td>
