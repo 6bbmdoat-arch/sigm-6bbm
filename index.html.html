@@ -6,6 +6,51 @@
 <title>SIGM — 6° BBM</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA0Bt_EU0SPozL4pUexKNNOw9_1zGAUQrA",
+  authDomain: "sigm-6bbm.firebaseapp.com",
+  projectId: "sigm-6bbm",
+  storageBucket: "sigm-6bbm.firebasestorage.app",
+  messagingSenderId: "782637729040",
+  appId: "1:782637729040:web:e3ef380bb228a37df95195"
+};
+
+const fireApp = initializeApp(firebaseConfig);
+const db = getFirestore(fireApp);
+
+window.FS = {
+  async save(colName, obj) {
+    try {
+      await setDoc(doc(db, colName, obj.id), obj);
+    } catch(e) { console.error('FS.save error', e); }
+  },
+  async delete(colName, id) {
+    try {
+      await deleteDoc(doc(db, colName, id));
+    } catch(e) { console.error('FS.delete error', e); }
+  },
+  listen(colName, callback) {
+    return onSnapshot(collection(db, colName), snap => {
+      const items = [];
+      snap.forEach(d => items.push(d.data()));
+      callback(items);
+    });
+  },
+  async loadAll(colName) {
+    const snap = await getDocs(collection(db, colName));
+    const items = [];
+    snap.forEach(d => items.push(d.data()));
+    return items;
+  }
+};
+
+window.fbReady = true;
+window.dispatchEvent(new Event('fbReady'));
+</script>
 <style>
 :root {
   --red: #c0233a;
@@ -959,6 +1004,13 @@ let deleteCallback = null;
 let currentPage = 'dashboard';
 
 function saveDB() { localStorage.setItem('sigm_db', JSON.stringify(DB)); }
+
+function fsSave(colName, obj) {
+  if(window.FS) window.FS.save(colName, obj);
+}
+function fsDelete(colName, id) {
+  if(window.FS) window.FS.delete(colName, id);
+}
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 // --- LOGIN ---
@@ -982,6 +1034,47 @@ function doLogin() {
     document.getElementById('login-error').textContent = 'CPF ou senha incorretos.';
   }
 }
+// --- FIREBASE SYNC ON READY ---
+window.addEventListener('fbReady', async () => {
+  try {
+    showToast('Sincronizando dados...');
+    const [missoes, viaturas, equipamentos, militares] = await Promise.all([
+      window.FS.loadAll('missoes'),
+      window.FS.loadAll('viaturas'),
+      window.FS.loadAll('equipamentos'),
+      window.FS.loadAll('militares')
+    ]);
+    if(missoes.length)     DB.missoes     = missoes;
+    if(viaturas.length)    DB.viaturas    = viaturas;
+    if(equipamentos.length) DB.equipamentos = equipamentos;
+    if(militares.length)   DB.militares   = militares;
+    saveDB();
+    if(document.getElementById('app').style.display !== 'none') {
+      updateDashboard();
+      renderMissoes(); renderViaturas(); renderEquipamentos(); renderMilitares();
+    }
+
+    // Push defaults to Firestore if empty
+    if(!missoes.length && DB.viaturas.length) {
+      DB.viaturas.forEach(v => fsSave('viaturas', v));
+    }
+    if(!militares.length) {
+      DB.militares.forEach(m => fsSave('militares', m));
+    }
+
+    // Real-time listeners
+    window.FS.listen('missoes',     items => { if(items.length||DB.missoes.length){ DB.missoes=items; saveDB(); if(document.getElementById('sec-missoes').classList.contains('active')) renderMissoes(); updateDashboard(); }});
+    window.FS.listen('viaturas',    items => { if(items.length||DB.viaturas.length){ DB.viaturas=items; saveDB(); if(document.getElementById('sec-viaturas').classList.contains('active')) renderViaturas(); updateDashboard(); }});
+    window.FS.listen('equipamentos',items => { if(items.length||DB.equipamentos.length){ DB.equipamentos=items; saveDB(); if(document.getElementById('sec-equipamentos').classList.contains('active')) renderEquipamentos(); updateDashboard(); }});
+    window.FS.listen('militares',   items => { if(items.length||DB.militares.length){ DB.militares=items; saveDB(); if(document.getElementById('sec-militares').classList.contains('active')) renderMilitares(); updateDashboard(); }});
+
+    showToast('✅ Conectado ao Firebase!');
+  } catch(e) {
+    console.error('Firebase sync error:', e);
+    showToast('⚠ Modo offline — dados locais');
+  }
+});
+
 // Close modals clicking outside
 document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.addEventListener('click', e => { if(e.target===bg) bg.classList.remove('active'); });
