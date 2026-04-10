@@ -370,7 +370,7 @@ tbody td { padding:10px 14px; font-size:13px; color:var(--text); }
 <body>
 
 <!-- ===== LOGIN ===== -->
-<div id="login-screen">
+<div id="login-screen" style="display:flex;">
   <div class="login-box">
     <img class="login-logo" id="login-logo" src="" alt="CBMMA"/>
     <div class="login-title">SIGM <span>6°BBM</span></div>
@@ -385,7 +385,7 @@ tbody td { padding:10px 14px; font-size:13px; color:var(--text); }
 </div>
 
 <!-- ===== APP ===== -->
-<div id="app">
+<div id="app" style="display:none;">
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -1049,9 +1049,13 @@ window.addEventListener('fbReady', async () => {
     if(equipamentos.length) DB.equipamentos = equipamentos;
     if(militares.length)   DB.militares   = militares;
     saveDB();
-    if(document.getElementById('app').style.display !== 'none') {
+    if(currentUser && document.getElementById('app').style.display !== 'none') {
       updateDashboard();
-      renderMissoes(); renderViaturas(); renderEquipamentos(); renderMilitares();
+      if(document.getElementById('sec-missoes').classList.contains('active')) renderMissoes();
+      if(document.getElementById('sec-viaturas').classList.contains('active')) renderViaturas();
+      if(document.getElementById('sec-equipamentos').classList.contains('active')) renderEquipamentos();
+      if(document.getElementById('sec-militares').classList.contains('active')) renderMilitares();
+      updateDashboard();
     }
 
     // Push defaults to Firestore if empty
@@ -1063,10 +1067,10 @@ window.addEventListener('fbReady', async () => {
     }
 
     // Real-time listeners
-    window.FS.listen('missoes',     items => { if(items.length||DB.missoes.length){ DB.missoes=items; saveDB(); if(document.getElementById('sec-missoes').classList.contains('active')) renderMissoes(); updateDashboard(); }});
-    window.FS.listen('viaturas',    items => { if(items.length||DB.viaturas.length){ DB.viaturas=items; saveDB(); if(document.getElementById('sec-viaturas').classList.contains('active')) renderViaturas(); updateDashboard(); }});
-    window.FS.listen('equipamentos',items => { if(items.length||DB.equipamentos.length){ DB.equipamentos=items; saveDB(); if(document.getElementById('sec-equipamentos').classList.contains('active')) renderEquipamentos(); updateDashboard(); }});
-    window.FS.listen('militares',   items => { if(items.length||DB.militares.length){ DB.militares=items; saveDB(); if(document.getElementById('sec-militares').classList.contains('active')) renderMilitares(); updateDashboard(); }});
+    window.FS.listen('missoes',     items => { DB.missoes=items; saveDB(); if(currentUser){ if(document.getElementById('sec-missoes').classList.contains('active')) renderMissoes(); updateDashboard(); }});
+    window.FS.listen('viaturas',    items => { if(items.length){ DB.viaturas=items; saveDB(); if(currentUser && document.getElementById('sec-viaturas').classList.contains('active')) renderViaturas(); if(currentUser) updateDashboard(); }});
+    window.FS.listen('equipamentos',items => { if(items.length){ DB.equipamentos=items; saveDB(); if(currentUser && document.getElementById('sec-equipamentos').classList.contains('active')) renderEquipamentos(); if(currentUser) updateDashboard(); }});
+    window.FS.listen('militares',   items => { if(items.length){ DB.militares=items; saveDB(); if(currentUser && document.getElementById('sec-militares').classList.contains('active')) renderMilitares(); if(currentUser) updateDashboard(); }});
 
     showToast('✅ Conectado ao Firebase!');
   } catch(e) {
