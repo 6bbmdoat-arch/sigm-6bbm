@@ -6,51 +6,8 @@
 <title>SIGM — 6° BBM</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyA0Bt_EU0SPozL4pUexKNNOw9_1zGAUQrA",
-  authDomain: "sigm-6bbm.firebaseapp.com",
-  projectId: "sigm-6bbm",
-  storageBucket: "sigm-6bbm.firebasestorage.app",
-  messagingSenderId: "782637729040",
-  appId: "1:782637729040:web:e3ef380bb228a37df95195"
-};
-
-const fireApp = initializeApp(firebaseConfig);
-const db = getFirestore(fireApp);
-
-window.FS = {
-  async save(colName, obj) {
-    try {
-      await setDoc(doc(db, colName, obj.id), obj);
-    } catch(e) { console.error('FS.save error', e); }
-  },
-  async delete(colName, id) {
-    try {
-      await deleteDoc(doc(db, colName, id));
-    } catch(e) { console.error('FS.delete error', e); }
-  },
-  listen(colName, callback) {
-    return onSnapshot(collection(db, colName), snap => {
-      const items = [];
-      snap.forEach(d => items.push(d.data()));
-      callback(items);
-    });
-  },
-  async loadAll(colName) {
-    const snap = await getDocs(collection(db, colName));
-    const items = [];
-    snap.forEach(d => items.push(d.data()));
-    return items;
-  }
-};
-
-window.fbReady = true;
-window.dispatchEvent(new Event('fbReady'));
-</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --red: #c0233a;
@@ -1004,6 +961,53 @@ let deleteCallback = null;
 let currentPage = 'dashboard';
 
 function saveDB() { localStorage.setItem('sigm_db', JSON.stringify(DB)); }
+
+// --- FIREBASE INIT (compat SDK - runs in main scope) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyA0Bt_EU0SPozL4pUexKNNOw9_1zGAUQrA",
+  authDomain: "sigm-6bbm.firebaseapp.com",
+  projectId: "sigm-6bbm",
+  storageBucket: "sigm-6bbm.firebasestorage.app",
+  messagingSenderId: "782637729040",
+  appId: "1:782637729040:web:e3ef380bb228a37df95195"
+};
+let _fbdb = null;
+try {
+  if(typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    _fbdb = firebase.firestore();
+  }
+} catch(e) { console.warn('Firebase init error:', e); }
+
+window.FS = {
+  save(colName, obj) {
+    if(!_fbdb) return;
+    try { _fbdb.collection(colName).doc(obj.id).set(obj); } catch(e) { console.error('FS.save', e); }
+  },
+  delete(colName, id) {
+    if(!_fbdb) return;
+    try { _fbdb.collection(colName).doc(id).delete(); } catch(e) { console.error('FS.delete', e); }
+  },
+  listen(colName, callback) {
+    if(!_fbdb) return;
+    return _fbdb.collection(colName).onSnapshot(snap => {
+      const items = [];
+      snap.forEach(d => items.push(d.data()));
+      callback(items);
+    });
+  },
+  async loadAll(colName) {
+    if(!_fbdb) return [];
+    const snap = await _fbdb.collection(colName).get();
+    const items = [];
+    snap.forEach(d => items.push(d.data()));
+    return items;
+  }
+};
+
+if(_fbdb) {
+  setTimeout(() => window.dispatchEvent(new Event('fbReady')), 500);
+}
 
 function fsSave(colName, obj) {
   if(window.FS) window.FS.save(colName, obj);
